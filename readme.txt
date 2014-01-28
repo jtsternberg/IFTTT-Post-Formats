@@ -1,18 +1,19 @@
 === Plugin Name ===
 IFTTT Post Formats
 
-Contributors: jtsternberg
-Plugin Name: IFTTT Post Formats
-Plugin URI: http://dsgnwrks.pro/plugins/ifttt-post-formats
-Tags: ifttt, post formats, if this then that, automation
-Author URI: http://jtsternberg.com/about
-Author: Jtsternberg
-Donate link: http://j.ustin.co/rYL89n
-Requires at least: 3.1
-Tested up to: 3.8
-Version: 0.1.0
-License: GPLv2 or later
-License URI: http://www.gnu.org/licenses/gpl-2.0.html
+Contributors      : jtsternberg
+Plugin Name       : IFTTT Post Formats
+Plugin URI        : http://dsgnwrks.pro/plugins/ifttt-post-formats
+Tags              : ifttt, post formats, if this then that, automation
+Author URI        : http://jtsternberg.com/about
+Author            : Jtsternberg
+Donate link       : http://j.ustin.co/rYL89n
+Requires at least : 3.1
+Tested up to      : 3.8
+Version           : 0.1.0
+Stable tag        : trunk
+License           : GPLv2 or later
+License URI       : http://www.gnu.org/licenses/gpl-2.0.html
 
 Set a post format for your IFTTT-created posts via a post format category.
 
