@@ -23,9 +23,7 @@ class IFTTT_WP_Post_Formats {
 	function ifttt_formats( $post_id ) {
 
 		$cats          = get_the_terms( $post_id, 'category' );
-
 		$formats       = array( 'ifttt-aside', 'ifttt-gallery', 'ifttt-link', 'ifttt-image', 'ifttt-quote', 'ifttt-status', 'ifttt-video', 'ifttt-audio', 'ifttt-chat' );
-
 		$filtered_cats = array();
 		$share         = array();
 		$format        = false;
@@ -45,7 +43,7 @@ class IFTTT_WP_Post_Formats {
 		}
 
 		// If we found a post-format category...
-		if ( $format ) {
+		if ( $format && ! get_post_format( $post_id ) ) {
 			// set the post format
 			set_post_format( $post_id , $format );
 		}
