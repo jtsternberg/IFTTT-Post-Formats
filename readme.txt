@@ -4,7 +4,7 @@ IFTTT Post Formats
 Contributors: jtsternberg  
 Plugin Name: IFTTT Post Formats  
 Plugin URI: http://dsgnwrks.pro/plugins/ifttt-post-formats  
-Tags: ifttt, post formats, if this then that, automation  
+Tags: ifttt, post formats, post types, if this then that, automation  
 Author URI: http://jtsternberg.com/about  
 Author: Jtsternberg  
 Donate link: http://j.ustin.co/rYL89n  
