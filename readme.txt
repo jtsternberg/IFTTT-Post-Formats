@@ -25,15 +25,15 @@ Unfortunately IFTTT doesn't have a way to specify a post format or a custom post
 
 To set the post format, you need to set the category in IFTTT to one of the following categories:
 
-* **`ifttt-aside`**
-* **`ifttt-gallery`**
-* **`ifttt-link`**
-* **`ifttt-image`**
-* **`ifttt-quote`**
-* **`ifttt-status`**
-* **`ifttt-video`**
-* **`ifttt-audio`**
-* **`ifttt-chat`**
+* `ifttt-aside`
+* `ifttt-gallery`
+* `ifttt-link`
+* `ifttt-image`
+* `ifttt-quote`
+* `ifttt-status`
+* `ifttt-video`
+* `ifttt-audio`
+* `ifttt-chat`
 
 So for my YouTube -> WordPress recipe, I have it adding the 'ifttt-video' category, and voilà, when it's published, the format has been set.
 
