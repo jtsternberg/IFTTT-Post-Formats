@@ -6,16 +6,61 @@
 	Author URI: http://jtsternberg.com/about
 	Author: Jtsternberg
 	Donate link: http://dsgnwrks.pro/give/
-	Version: 0.1.1
+	Version: 0.1.2
 */
 
 
-class IFTTT_WP_Post_Formats {
+class IFTTT_Post_Formats_Post_Types {
 
+	/**
+	 * White-listed post-format categories to check for when a post is saved
+	 *
+	 * @var array
+	 */
 	protected $iftt_format_cats = array( 'ifttt-aside', 'ifttt-gallery', 'ifttt-link', 'ifttt-image', 'ifttt-quote', 'ifttt-status', 'ifttt-video', 'ifttt-audio', 'ifttt-chat' );
-	protected $post_id = null;
 
-	function __construct() {
+	/**
+	 * The post ID of the saved-post to check
+	 *
+	 * @var int
+	 */
+	protected $post_id = 0;
+
+	/**
+	 * Be default, the categories will be re-applied back to the category taxonomy,
+	 * but this is filterable (with the 'ifttt_pfpt_taxonomy_to_save_as' filter)
+	 *
+	 * @var string
+	 */
+	protected $taxonomy_to_save_as = 'category';
+
+	/**
+	 * Array of categories to re-apply to the post
+	 *
+	 * @var array
+	 */
+	protected $filtered_cats = array();
+
+	/**
+	 * The specified post format (if found)
+	 *
+	 * @var string
+	 */
+	protected $format = '';
+
+	/**
+	 * The specified post type (if found)
+	 *
+	 * @var string
+	 */
+	protected $post_type = '';
+
+	/**
+	 * Adds our hooks.
+	 *
+	 * @since 0.1.2
+	 */
+	function hooks() {
 		add_action( 'save_post', array( $this, 'check_edit' ), 5, 2 );
 	}
 
@@ -30,24 +75,22 @@ class IFTTT_WP_Post_Formats {
 			&& 'post' == $post->post_type
 			&& current_user_can( 'edit_post', $post_id )
 			&& ! wp_is_post_revision( $post )
-			&& is_null( $this->post_id )
+			&& 0 === $this->post_id
 		) {
 			$this->post_id = $post_id;
-			add_action( 'save_post', array( $this, 'ifttt_formats_post_types' ), 18 );
+
+			add_action( 'save_post', array( $this, 'filter_categories' ), 18 );
 		}
 
 	}
 
 	/**
-	 * Set post format based on category, and remove category
+	 * Loops through categories to determine any actionable IFTTT categories
 	 * @since 0.1.0
 	 */
-	function ifttt_formats_post_types() {
+	function filter_categories() {
 
-		$cats          = get_the_terms( $this->post_id, 'category' );
-		$filtered_cats = array();
-		$format        = false;
-		$post_type     = false;
+		$cats = get_the_terms( $this->post_id, 'category' );
 
 		// No categories? bail
 		if ( ! $cats ) {
@@ -56,71 +99,103 @@ class IFTTT_WP_Post_Formats {
 
 		// Loop through
 		foreach ( $cats as $key => $cat ) {
+
 			// if our cat slug matches one of our ifttt formats,
 			if ( in_array( $cat->slug, $this->iftt_format_cats ) ) {
 				// Set the post format
-				$format = str_replace( 'ifttt-', '', $cat->slug );
+				$this->format = str_replace( 'ifttt-', '', $cat->slug );
 				continue;
 			}
 
 			if ( 0 === strpos( $cat->slug, 'ifttt-posttype-' ) ) {
 				// Set the post-type
-				$post_type = str_replace( 'ifttt-posttype-', '', $cat->slug );
+				$this->post_type = str_replace( 'ifttt-posttype-', '', $cat->slug );
 				continue;
 			}
 
 			// Otherwise, add the term to the list of terms to be re-applied to the post
-			$filtered_cats[] = $cat->name;
+			$this->filtered_cats[] = $cat->name;
 		}
 
-		// If we found no post-format or post-type categories, bail
-		if ( ! $format && ! $post_type ) {
-			return;
+		// If we found a post-format or post-type category, let's act on them
+		if ( $this->format || $this->post_type ) {
+			$this->handle_format_post_type();
 		}
 
-		// If we found a post-format category...
-		if ( $format && ! get_post_format( $this->post_id ) ) {
-			$this->set_post_format( $format, $filtered_cats );
-		}
-
-		// If we found a post-type
-		if ( $post_type && post_type_exists( $post_type ) ) {
-			$this->set_post_type( $post_type, $filtered_cats );
-		}
 	}
 
 	/**
 	 * Set post format for a post and update the terms to remove the post-format term
 	 *
 	 * @since 0.1.1
-	 *
-	 * @param string $format        Post format to set
-	 * @param array  $filtered_cats Array of categories to re-apply to the post
 	 */
-	public function set_post_format( $format, $filtered_cats ) {
+	public function handle_format_post_type() {
+
+		// If we found a post-format category...
+		if ( $this->format ) {
+			$this->set_post_format();
+		}
+
+		// If we found a post-type
+		if ( $this->post_type && post_type_exists( $this->post_type ) ) {
+			$this->set_post_type();
+		}
+
+		do_action( 'ifttt_pfpt_handle_format_post_type', $this->post_id, $this->filtered_cats, $this->post_type, $this->format );
+	}
+
+	/**
+	 * Set post format for a post and update the terms to remove the post-format term
+	 *
+	 * @since 0.1.1
+	 */
+	public function set_post_format() {
 		// set the post format
-		set_post_format( $this->post_id , $format );
+		set_post_format( $this->post_id, $this->format );
 
 		// Reset terms minus ifttt post format terms
-		wp_set_object_terms( $this->post_id, $filtered_cats, 'category' );
+		wp_set_object_terms( $this->post_id, $this->filtered_cats, $this->taxonomy_to_save_as() );
+
+		do_action( 'ifttt_pfpt_set_post_format', $this->post_id, $this->format, $this->filtered_cats );
 	}
 
 	/**
 	 * Set post post_type for a post and update the terms to remove the post-type term
 	 *
 	 * @since 0.1.1
-	 *
-	 * @param string $post_type     post_type to set
-	 * @param array  $filtered_cats Array of categories to re-apply to the post
 	 */
-	public function set_post_type( $post_type, $filtered_cats ) {
+	public function set_post_type() {
 		// Reset terms minus ifttt post-type term
-		wp_set_object_terms( $this->post_id, $filtered_cats, 'category' );
+		wp_set_object_terms( $this->post_id, $this->filtered_cats, $this->taxonomy_to_save_as() );
 
 		// set the post-type
-		set_post_type( $this->post_id, $post_type );
+		set_post_type( $this->post_id, $this->post_type );
+
+		do_action( 'ifttt_pfpt_set_post_type', $this->post_id, $this->post_type, $this->filtered_cats );
+	}
+
+	/**
+	 * Retrieves the filtered taxonomy_to_save_as property. Defaults to 'category'
+	 *
+	 * @since  0.1.2
+	 *
+	 * @return string  Filtered value
+	 */
+	public function taxonomy_to_save_as() {
+		return apply_filters( 'ifttt_pfpt_taxonomy_to_save_as', $this->taxonomy_to_save_as, $this->post_id, $this->filtered_cats, $this->post_type, $this->format );
 	}
 
 }
 
-new IFTTT_WP_Post_Formats();
+function ifttt_pfpt_object() {
+	static $object = null;
+	if ( is_null( $object ) ) {
+		$object = new IFTTT_Post_Formats_Post_Types();
+		$object->hooks();
+	}
+
+	return $object;
+}
+
+// Initiate
+ifttt_pfpt_object();
