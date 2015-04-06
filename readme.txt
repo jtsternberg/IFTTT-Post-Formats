@@ -24,6 +24,7 @@ IFTTT (if this, then that) is one of the coolest web services available, and all
 Unfortunately IFTTT doesn't have a way to specify a post format or a custom post type, so this plugin provides a couple ways to update them.
 
 To set the post format, you need to set the category in IFTTT to one of the following categories:
+
 * **`ifttt-aside`**
 * **`ifttt-gallery`**
 * **`ifttt-link`**
