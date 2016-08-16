@@ -8,8 +8,8 @@
 **Author:** Jtsternberg  
 **Donate link:** http://j.ustin.co/rYL89n  
 **Requires at least:** 3.1  
-**Tested up to:** 4.2.0  
-**Version:** 0.1.2  
+**Tested up to:** 4.6.0  
+**Version:** 0.1.3  
 **Stable tag:** trunk  
 **License:** GPLv2 or later  
 **License URI:** http://www.gnu.org/licenses/gpl-2.0.html  
@@ -34,11 +34,15 @@ To set the post format, you need to set the category in IFTTT to one of the foll
 * `ifttt-audio`
 * `ifttt-chat`
 
-So for my YouTube -> WordPress recipe, I have it adding the 'ifttt-video' category, and voilà, when it's published, the format has been set.
+So for my YouTube -> WordPress recipe, I have it adding the 'ifttt-video' category in IFTTT (IFTTT allows you to specify the category for the posts it creates), and voilà, when it's published, the format has been set.
 
 If you want to instead set the new post to a custom post type, you can do so by setting the category in IFTTT to one that matches this pattern: **`ifttt-posttype-{post_type_slug}`**. So if you wanted to create new WordPress pages with IFTTT, you would add the **`ifttt-posttype-page`** category.
 
-Hope you find this useful.
+And finally, if you want the IFTTT categories to be stored as a *different* taxonomy, you can do so by setting the category in IFTTT to one that matches this pattern: **`ifttt-taxonomy-{taxonomy_slug}`**.
+
+**Note:** These speciall `ifttt-*` categories will not actually be set on the post/page/object. These are 'special' categories which simply serve as flags for which post format, post-type or taxonomy to send the data to, and they are removed from the list of categories which are actually stored to the post.
+
+Hope you find this useful!
 
 
 ## Installation ##
@@ -48,11 +52,11 @@ Hope you find this useful.
 
 ## Frequently Asked Questions ##
 
-### How do I set the post type with this plugin? ###
+### How do I set the post type with this plugin?
 * This was added in version [0.1.1](https://wordpress.org/plugins/ifttt-post-formats/changelog/). To set the new post to a custom post type, you can do so by setting the category in IFTTT to one that matches this pattern: **`ifttt-posttype-{post_type_slug}`**. So if you wanted to create new WordPress pages with IFTTT, you would add the **`ifttt-posttype-page`** category.
 
-### How can I change the taxonomy for the IFTTT categories? ###
-* This ability was added in version [0.1.2](https://wordpress.org/plugins/ifttt-post-formats/changelog/). You can hook into the `ifttt_pfpt_taxonomy_to_save_as` filter like so:
+### How can I change the taxonomy for the IFTTT categories?
+* As of [0.1.3](https://wordpress.org/plugins/ifttt-post-formats/changelog/) You can do so by specifying a `ifttt-taxonomy-{taxonomy_slug}` category in the IFTTT category field. Will only work if the `taxonomy_slug` is a valid registered taxonomy. You can also hook into the `ifttt_pfpt_taxonomy_to_save_as` filter like so:
 
 ```php
 function ifttt_pfpt_save_as_custom_taxonomy( $taxonomy ) {
@@ -62,20 +66,31 @@ function ifttt_pfpt_save_as_custom_taxonomy( $taxonomy ) {
 add_filter( 'ifttt_pfpt_taxonomy_to_save_as', 'ifttt_pfpt_save_as_custom_taxonomy' );
 ```
 
-### ?? ###
+### I don't like the `ifttt-*` categories hanging around.
+* You can delete them by adding the following snippet to your theme's functions.php file or as an mu-plugin:
+
+```php
+add_filter( 'ifttt_pfpt_delete_ifttt_cats', '__return_true' );
+```
+
+### ??
 * If you run into a problem or have a question, contact me ([contact form](http://j.ustin.co/scbo43) or [@jtsternberg on twitter](http://j.ustin.co/wUfBD3)). I'll add them here.
 
 
 ## Changelog ##
 
-### 0.1.2 ###
+### 0.1.3
+* Added the ability to set the taxonomy via the special `ifttt-taxonomy-{taxonomy_slug}` category.
+* Added the ability to delete the `ifttt-*` terms with the `ifttt_pfpt_delete_ifttt_cats` filter.
+
+### 0.1.2
 * New filter, `ifttt_pfpt_taxonomy_to_save_as`, to override which taxonomy the terms should be saved to (if not category).
 * New action, `ifttt_pfpt_set_post_format`, called when a ifttt post format has been found and set.
 * New action, `ifttt_pfpt_set_post_type`, called when a ifttt post type has been found and set.
 * New action, `ifttt_pfpt_handle_format_post_type`, called when either a ifttt post format or ifttt post type has been found and set.
 
-### 0.1.1 ###
+### 0.1.1
 * Add custom post type support
 
-### 0.1.0 ###
+### 0.1.0
 * First Release

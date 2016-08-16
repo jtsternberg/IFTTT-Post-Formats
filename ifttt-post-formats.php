@@ -6,7 +6,7 @@
 	Author URI: http://jtsternberg.com/about
 	Author: Jtsternberg
 	Donate link: http://dsgnwrks.pro/give/
-	Version: 0.1.2
+	Version: 0.1.3
 */
 
 
@@ -40,6 +40,13 @@ class IFTTT_Post_Formats_Post_Types {
 	 * @var array
 	 */
 	protected $filtered_cats = array();
+
+	/**
+	 * Array of IFTTT categories which may need to be deleted.
+	 *
+	 * @var array
+	 */
+	protected $ifttt_cats = array();
 
 	/**
 	 * The specified post format (if found)
@@ -104,12 +111,24 @@ class IFTTT_Post_Formats_Post_Types {
 			if ( in_array( $cat->slug, $this->iftt_format_cats ) ) {
 				// Set the post format
 				$this->format = str_replace( 'ifttt-', '', $cat->slug );
+				$this->ifttt_cats[] = $cat->slug;
 				continue;
 			}
 
 			if ( 0 === strpos( $cat->slug, 'ifttt-posttype-' ) ) {
 				// Set the post-type
 				$this->post_type = str_replace( 'ifttt-posttype-', '', $cat->slug );
+				$this->ifttt_cats[] = $cat->slug;
+				continue;
+			}
+
+			if ( 0 === strpos( $cat->slug, 'ifttt-taxonomy-' ) ) {
+				$taxonomy = str_replace( 'ifttt-taxonomy-', '', $cat->slug );
+				if ( taxonomy_exists( $taxonomy ) ) {
+					// Set the taxonomy
+					$this->taxonomy_to_save_as = $taxonomy;
+				}
+				$this->ifttt_cats[] = $cat->slug;
 				continue;
 			}
 
@@ -118,8 +137,8 @@ class IFTTT_Post_Formats_Post_Types {
 		}
 
 		// If we found a post-format or post-type category, let's act on them
-		if ( $this->format || $this->post_type ) {
-			$this->handle_format_post_type();
+		if ( $this->format || $this->post_type || 'category' !== $this->taxonomy_to_save_as ) {
+			$this->handle_switching();
 		}
 
 	}
@@ -129,19 +148,24 @@ class IFTTT_Post_Formats_Post_Types {
 	 *
 	 * @since 0.1.1
 	 */
-	public function handle_format_post_type() {
+	public function handle_switching() {
+		$set_terms = false;
 
 		// If we found a post-format category...
 		if ( $this->format ) {
 			$this->set_post_format();
+			$set_terms = true;
 		}
 
 		// If we found a post-type
 		if ( $this->post_type && post_type_exists( $this->post_type ) ) {
-			$this->set_post_type();
+			$this->switch_post_type();
+			$set_terms = true;
 		}
 
-		do_action( 'ifttt_pfpt_handle_format_post_type', $this->post_id, $this->filtered_cats, $this->post_type, $this->format );
+		$taxonomy = $this->maybe_set_taxonomy_terms( $set_terms );
+
+		do_action( 'ifttt_pfpt_handle_switching', $this->post_id, $this->filtered_cats, $this->post_type, $this->format, $taxonomy );
 	}
 
 	/**
@@ -150,13 +174,10 @@ class IFTTT_Post_Formats_Post_Types {
 	 * @since 0.1.1
 	 */
 	public function set_post_format() {
-		// set the post format
-		set_post_format( $this->post_id, $this->format );
+		// Set the post format
+		$result = set_post_format( $this->post_id, $this->format );
 
-		// Reset terms minus ifttt post format terms
-		wp_set_object_terms( $this->post_id, $this->filtered_cats, $this->taxonomy_to_save_as() );
-
-		do_action( 'ifttt_pfpt_set_post_format', $this->post_id, $this->format, $this->filtered_cats );
+		do_action( 'ifttt_pfpt_set_post_format', $this->post_id, $this->format, $this->filtered_cats, $result );
 	}
 
 	/**
@@ -164,14 +185,64 @@ class IFTTT_Post_Formats_Post_Types {
 	 *
 	 * @since 0.1.1
 	 */
-	public function set_post_type() {
+	public function switch_post_type() {
+		// Set the post-type
+		$result = set_post_type( $this->post_id, $this->post_type );
+
+		do_action( 'ifttt_pfpt_set_post_type', $this->post_id, $this->post_type, $this->filtered_cats, $result );
+	}
+
+	/**
+	 * Depending on the path, will reset the categories minus the ifttt categories,
+	 * And if the default taxonomy has been changed, will remove the terms from the categories.
+	 *
+	 * @since  0.1.3
+	 *
+	 * @param  boolean $set_terms Whether we should reset terms.
+	 *
+	 * @return string The taxonomy to save.
+	 */
+	public function maybe_set_taxonomy_terms( $set_terms = false ) {
+		$taxonomy = $this->taxonomy_to_save_as();
+
+		if ( ! $set_terms && 'category' === $taxonomy ) {
+			return $taxonomy;
+		}
+
 		// Reset terms minus ifttt post-type term
-		wp_set_object_terms( $this->post_id, $this->filtered_cats, $this->taxonomy_to_save_as() );
+		wp_set_object_terms( $this->post_id, $this->filtered_cats, $taxonomy );
 
-		// set the post-type
-		set_post_type( $this->post_id, $this->post_type );
+		if ( 'category' !== $taxonomy ) {
+			wp_set_post_categories( $this->post_id, array() );
+		}
 
-		do_action( 'ifttt_pfpt_set_post_type', $this->post_id, $this->post_type, $this->filtered_cats );
+		$this->maybe_delete_ifttt_cats();
+
+		return $taxonomy;
+	}
+
+	/**
+	 * If the 'ifttt_pfpt_delete_ifttt_cats' filter is toggled to true, will delete the ifttt terms, as if they were never there.
+	 *
+	 * Usage: `add_filter( 'ifttt_pfpt_delete_ifttt_cats', '__return_true' );`
+	 *
+	 * @since  0.1.3
+	 *
+	 * @return void
+	 */
+	public function maybe_delete_ifttt_cats() {
+		if ( ! apply_filters( 'ifttt_pfpt_delete_ifttt_cats', false ) ) {
+			return;
+		}
+
+		foreach ( $this->ifttt_cats as $cat_slug ) {
+			if ( $term = get_term_by( 'slug', $cat_slug, 'category' ) ) {
+				if ( isset( $term->term_id ) ) {
+					wp_delete_term( $term->term_id, 'category' );
+				}
+			}
+		}
+
 	}
 
 	/**
